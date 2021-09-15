@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         Seasonvar enchancer
-// @version      0.1
+// @version      1.0
 // @description  Enhanser for seasonvar.ru
 // @author       VOLK_RuS
 // @match        http://seasonvar.ru/*
