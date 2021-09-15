@@ -5,6 +5,7 @@
 // @author       VOLK_RuS
 // @match        http://seasonvar.ru/*
 // @updateURL	 https://github.com/VOLKRuS/SeasonvarEnhancer/raw/main/SeasonvarEnhancer.js
+// @downloadURL  https://github.com/VOLKRuS/SeasonvarEnhancer/raw/main/SeasonvarEnhancer.js
 // @grant        none
 // @run-at       document-end
 // ==/UserScript==
