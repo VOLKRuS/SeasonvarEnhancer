@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Seasonvar enchancer
 // @namespace    *://seasonvar.ru/*
-// @version      1.1
+// @version      1.0
 // @description  Enchancer for seasonvar.ru
 // @author       VOLK_RuS
 // @match        *://seasonvar.ru/*
@@ -16,7 +16,6 @@
     var vid;
     var button;
     var prevvid;
-	var test;
 
     var HD = false;
 
@@ -30,7 +29,7 @@
                 vid = vids.item(i).currentSrc;
             }
         }
-        if(prevvid != vid && button)//Детектить была ли кнопка создана заранее.
+        if(prevvid != vid && button)//Детектить была ли кнопка создана заранее
         {
             button.href = vid;
             button.innerHTML = 'Скачать ' + svfunc.player.getSeries() + ' серию';
