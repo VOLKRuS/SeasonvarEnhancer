@@ -1,5 +1,5 @@
 # SeasonvarEnhanser
-Данный скрипт устанавливается с помощью Tampermonkey [Opera](https://addons.opera.com/ru/extensions/details/tampermonkey-beta/) [Chrome](https://chrome.google.com/webstore/detail/tampermonkey/dhdgffkkebhmkfjojejmpbldmpobfkfo?hl=ru)
+Данный скрипт устанавливается с помощью Tampermonkey([Opera](https://addons.opera.com/ru/extensions/details/tampermonkey-beta/)/[Chrome](https://chrome.google.com/webstore/detail/tampermonkey/dhdgffkkebhmkfjojejmpbldmpobfkfo?hl=ru))
 
 - Позволяет скачивать видео без премиума.
 - Устанавливает стандартную скорость на x1.5 для всех видео.
