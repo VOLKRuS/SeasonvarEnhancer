@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Seasonvar enchancer
 // @namespace    *://seasonvar.ru/*
-// @version      1.0.0
+// @version      1.1
 // @description  Enchancer for seasonvar.ru
 // @author       VOLK_RuS
 // @match        *://seasonvar.ru/*
@@ -16,6 +16,7 @@
     var vid;
     var button;
     var prevvid;
+	var test;
 
     var HD = false;
 
