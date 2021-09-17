@@ -29,7 +29,7 @@
                 vid = vids.item(i).currentSrc;
             }
         }
-        if(prevvid != vid && button)//Детектить была ли кнопка создана заранее
+        if(prevvid != vid && button)//Детектить была ли кнопка создана заранее.
         {
             button.href = vid;
             button.innerHTML = 'Скачать ' + svfunc.player.getSeries() + ' серию';
