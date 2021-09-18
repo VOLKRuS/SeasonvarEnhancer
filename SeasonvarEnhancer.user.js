@@ -75,6 +75,7 @@
 
             var g = document.body.querySelectorAll('g[fill-rule="nonzero"]');
             var pjs = document.createElement('pjsdiv');
+
             pjs.dataset.click = "markSet";
             pjs.dataset.markset = "settime";
             pjs.style.position = "relative";
@@ -88,8 +89,7 @@
             i.innerText = "Отметка на моменте";
             i.style.fontStyle = "unset";
 
-            i.onclick = function() {
-
+            pjs.onclick = function() {
                 i.innerHTML = 'Сохранено';
                 i.style.color = "rgb(72 243 41)";
                 setTimeout(function(){
