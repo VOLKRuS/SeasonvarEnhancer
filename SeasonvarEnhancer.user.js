@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Seasonvar enchancer
 // @namespace    *://seasonvar.ru/*
-// @version      1.0.1
+// @version      1.0.2
 // @description  Enchancer for seasonvar.ru
 // @author       VOLK_RuS
 // @match        *://seasonvar.ru/*
@@ -122,8 +122,8 @@ svfunc.markSet=function(a)
 		if(r.seria=svfunc.player.getSeries(),""==mark.trans?r.tran=0:r.tran=mark.trans,"settime"==t)
 	{
 		var o=svfunc.player.getTime();
-		r.minute=Math.floor(o/60),r.second=parseInt(o>0? o-60*r.minute:o-60*r.minute+1  );
-        window.location.hash = "rewind=" + r.seria + "_seriya_na_" + r.minute + "_minute_" + r.second + "_sekunde";
+		r.minute=Math.floor(o/60),r.second=parseInt(o>1? o-60*r.minute:o-60*r.minute+1  );
+        	window.location.hash = "rewind=" + r.seria + "_seriya_na_" + r.minute + "_minute_" + r.second + "_sekunde";
 	}
 		t="pauseadd",e="Отметка добавлена"
 	}
