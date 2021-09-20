@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Seasonvar enchancer
 // @namespace    *://seasonvar.ru/*
-// @version      1.0.2
+// @version      1.0.3
 // @description  Enchancer for seasonvar.ru
 // @author       VOLK_RuS
 // @match        *://seasonvar.ru/*
@@ -73,16 +73,17 @@
                 svfunc.player.swichHD();
             }*/
 
-            var g = document.body.querySelectorAll('g[fill-rule="nonzero"]');
+            var g = document.body.querySelectorAll('pjsdiv');
             var pjs = document.createElement('pjsdiv');
 
             pjs.dataset.click = "markSet";
             pjs.dataset.markset = "settime";
             pjs.style.position = "relative";
-            pjs.style.left = "185px";
             pjs.style.top = "-7px";
             pjs.style.padding = "7px";
+            pjs.style.paddingLeft = "38px";
             pjs.style.cursor = "pointer";
+            pjs.style.pointerEvents = "all";
 
             var i = document.createElement('i');
             i.classList.add("svico-mwatch");
@@ -99,7 +100,7 @@
     };
 
             pjs.appendChild(i);
-            g[1].parentElement.parentElement.parentElement.appendChild(pjs);
+            g[55].parentElement.parentElement.appendChild(pjs);
         }
         console.log('[Seasonvar enchancer] Trying to load script...');
 
