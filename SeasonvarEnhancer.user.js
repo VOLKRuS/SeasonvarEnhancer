@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Seasonvar enchancer
 // @namespace    *://seasonvar.ru/*
-// @version      1.0.3
+// @version      1.0.4
 // @description  Enchancer for seasonvar.ru
 // @author       VOLK_RuS
 // @match        *://seasonvar.ru/*
@@ -73,15 +73,13 @@
                 svfunc.player.swichHD();
             }*/
 
-            var g = document.body.querySelectorAll('pjsdiv');
+            var g = document.body.querySelectorAll('pjsdiv[style*="font-family: Verdana; letter-spacing: 0px;"]'); //document.body.querySelectorAll('pjsdiv[style*="font-family: Verdana; letter-spacing: 0px;"]')[2]
             var pjs = document.createElement('pjsdiv');
 
             pjs.dataset.click = "markSet";
             pjs.dataset.markset = "settime";
             pjs.style.position = "relative";
-            pjs.style.top = "-7px";
-            pjs.style.padding = "7px";
-            pjs.style.paddingLeft = "38px";
+            pjs.style.paddingLeft = "7px";
             pjs.style.cursor = "pointer";
             pjs.style.pointerEvents = "all";
 
@@ -100,9 +98,12 @@
     };
 
             pjs.appendChild(i);
-            g[55].parentElement.parentElement.appendChild(pjs);
+            g[2].appendChild(pjs);
         }
         console.log('[Seasonvar enchancer] Trying to load script...');
+
+        //Перемотка видео тапами
+        //document.querySelector('video').currentTime -= 5; сделать дабл клик!!
 
 svfunc.markSet=function(a)
 {
