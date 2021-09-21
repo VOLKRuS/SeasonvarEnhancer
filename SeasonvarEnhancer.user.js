@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Seasonvar enchancer
 // @namespace    *://seasonvar.ru/*
-// @version      1.0.4
+// @version      1.0.5
 // @description  Enchancer for seasonvar.ru
 // @author       VOLK_RuS
 // @match        *://seasonvar.ru/*
@@ -40,6 +40,7 @@
         {
             screen.orientation.lock('landscape');
         }
+
     }, 500);
 
     setTimeout(function(){
@@ -73,32 +74,35 @@
                 svfunc.player.swichHD();
             }*/
 
-            var g = document.body.querySelectorAll('pjsdiv[style*="font-family: Verdana; letter-spacing: 0px;"]'); //document.body.querySelectorAll('pjsdiv[style*="font-family: Verdana; letter-spacing: 0px;"]')[2]
+            var g = document.body.querySelectorAll('g[fill-rule="nonzero"]'); //document.body.querySelectorAll('pjsdiv[style*="font-family: Verdana; letter-spacing: 0px;"]')[2]
             var pjs = document.createElement('pjsdiv');
 
             pjs.dataset.click = "markSet";
             pjs.dataset.markset = "settime";
             pjs.style.position = "relative";
-            pjs.style.paddingLeft = "7px";
             pjs.style.cursor = "pointer";
             pjs.style.pointerEvents = "all";
+            pjs.style.bottom = "7px";
+            pjs.style.left = "70%";
 
-            var i = document.createElement('i');
-            i.classList.add("svico-mwatch");
-            i.innerText = "Отметка на моменте";
-            i.style.fontStyle = "unset";
+            var ic = document.createElement('i');
+            ic.classList.add("svico-mwatch");
+            ic.innerText = "Отметка на моменте";
+            ic.style.fontStyle = "unset";
 
             pjs.onclick = function() {
-                i.innerHTML = 'Сохранено';
-                i.style.color = "rgb(72 243 41)";
+                ic.innerHTML = 'Сохранено';
+                ic.style.color = "rgb(72 243 41)";
                 setTimeout(function(){
-                    i.innerHTML = 'Отметка на моменте';
-                    i.style.color = "";
+                    ic.innerHTML = 'Отметка на моменте';
+                    ic.style.color = "";
                 }, 1500);
-    };
+            };
 
-            pjs.appendChild(i);
-            g[2].appendChild(pjs);
+
+            pjs.appendChild(ic);
+            g[1].parentElement.parentElement.parentElement.appendChild(pjs);
+
         }
         console.log('[Seasonvar enchancer] Trying to load script...');
 
