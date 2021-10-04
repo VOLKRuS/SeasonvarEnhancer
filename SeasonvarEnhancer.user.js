@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Seasonvar enchancer
 // @namespace    *://seasonvar.ru/*
-// @version      1.0.6
+// @version      1.0.7
 // @description  Enchancer for seasonvar.ru
 // @author       VOLK_RuS
 // @match        *://seasonvar.ru/*
@@ -84,9 +84,9 @@
             pjs.style.pointerEvents = "all";
             pjs.style.bottom = "7px";
 
-            pjs.style.display = "block";
+            pjs.style.display = "inline";
             pjs.style.width = "197px";
-            pjs.style.paddingLeft = "55%";
+            pjs.style.paddingLeft = "27%";
 
             var ic = document.createElement('i');
             ic.classList.add("svico-mwatch");
@@ -102,9 +102,40 @@
                 }, 1500);
             };
 
+            var btnback = document.createElement('pjsdiv');
+            btnback.innerHTML = '◀◀ 5';
+            btnback.style.position = "relative";
+            btnback.style.top = "-7px";
+            btnback.style.paddingLeft = "12px";
+
+            btnback.onclick = function() {
+                btnback.style.color = "rgb(255, 221, 31)";
+                document.querySelector('video').currentTime -= 5;
+                setTimeout(function(){
+                    btnback.style.color = "";
+                }, 500);
+            };
+
+            var btnforw = document.createElement('pjsdiv');
+            btnforw.innerHTML = ' ▶▶';
+            btnforw.style.position = "relative";
+            btnforw.style.top = "-7px";
+
+            btnforw.onclick = function() {
+                btnforw.style.color = "rgb(255, 221, 31)";
+                document.querySelector('video').currentTime += 5;
+                setTimeout(function(){
+                    btnforw.style.color = "";
+                }, 500);
+            };
+            //document.querySelector('video').currentTime += 5;
 
             pjs.appendChild(ic);
             g[1].parentElement.parentElement.parentElement.appendChild(pjs);
+            g[1].parentElement.parentElement.parentElement.appendChild(btnback);
+            g[1].parentElement.parentElement.parentElement.appendChild(btnforw);
+
+            g[1].parentElement.parentElement.parentElement.style.width = "400px";
 
         }
         console.log('[Seasonvar enchancer] Trying to load script...');
