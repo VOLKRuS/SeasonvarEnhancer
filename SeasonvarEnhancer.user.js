@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Seasonvar enchancer
 // @namespace    *://seasonvar.ru/*
-// @version      1.1.2
+// @version      1.1.3
 // @description  Enchancer for seasonvar.ru
 // @author       VOLK_RuS
 // @match        *://seasonvar.ru/*
@@ -63,33 +63,31 @@
         window.addEventListener(t, function() { lastUserInput = Date.now(); }, true);
     });
 
-    // Перемотка тапами работает только для касаний пальцем.
-    // Клики мышью (ПК) проходят в плеер без изменений — в том числе на ноутбуках с сенсорным экраном.
-    var lastTouch = 0;
-    window.addEventListener('touchstart', function() { lastTouch = Date.now(); }, { capture: true, passive: true });
-    function fromTouch() { return Date.now() - lastTouch < 1000; }
-
-    // ================== ПЕРЕМОТКА ТАПАМИ ==================
-    var pass = false;          // пропустить отложенный клик в плеер
-    var tapTimer = null;
-    var firstTapSide = 0;
-    var pausedBefore = null;
+    // ================== ПЕРЕМОТКА ТАПАМИ (только касания пальцем) ==================
+    // Первый тап проходит в плеер как обычно (показ панели и т.п.).
+    // Второй и последующие тапы по краю видео перехватываются целиком —
+    // плеер их не видит, поэтому не срабатывает его двойной тап → полноэкранный режим.
+    // Мышь (ПК) не затрагивается: смотрим только pointerType === 'touch' и touch-события.
+    var lastTapEnd = 0;       // когда закончился предыдущий обычный тап
+    var lastTapSide = 0;
+    var pausedBefore = null;  // состояние паузы до первого тапа
     var seekSide = 0;
     var seekUntil = 0;
     var seekAccum = 0;
+    var gesture = null;       // { blocked, side, x, y, t }
+    var blockUntil = 0;       // глушим хвостовые mouse/click события перехваченного тапа
     var indicator = null;
     var indicatorTimer = null;
 
-    // -1 — левая треть, 1 — правая треть, 0 — центр, null — не по видео
-    function zoneOf(e) {
-        var t = e.target;
+    // -1 — левая часть, 1 — правая, 0 — центр, null — не по видео
+    function zoneAt(target, x, y) {
+        var t = target;
         if (!t || !(t.tagName === 'VIDEO' || (t.closest && t.closest('pjsdiv')))) return null;
         if (t.closest && t.closest('[data-sve]')) return null; // наши кнопки
         var v = getVideo();
         if (!v) return null;
         var r = v.getBoundingClientRect();
         if (!r.width || !r.height) return null;
-        var x = e.clientX, y = e.clientY;
         // не трогаем верхнюю полосу и панель управления снизу
         if (x < r.left || x > r.right || y < r.top + 40 || y > r.bottom - 60) return null;
         var rel = (x - r.left) / r.width;
@@ -99,7 +97,7 @@
     }
 
     function block(e) {
-        e.preventDefault();
+        if (e.cancelable) e.preventDefault();
         e.stopPropagation();
         e.stopImmediatePropagation();
     }
@@ -126,6 +124,34 @@
         indicatorTimer = setTimeout(function() { indicator.style.opacity = '0'; }, SEEK_MODE_MS);
     }
 
+    function setPaused(v, paused) {
+        if (paused) v.pause();
+        else { var p = v.play(); if (p && p.catch) p.catch(function(){}); }
+    }
+
+    // Плеер мог поставить паузу на первый тап (сразу или с задержкой) — откатываем.
+    function restorePauseState() {
+        var v = getVideo();
+        if (!v || pausedBefore === null) return;
+        var want = pausedBefore;
+        var until = Date.now() + 800;
+        function fix() {
+            if (Date.now() > until) {
+                v.removeEventListener('pause', fix);
+                v.removeEventListener('play', fix);
+                return;
+            }
+            if (v.paused !== want) setPaused(v, want);
+        }
+        v.addEventListener('pause', fix);
+        v.addEventListener('play', fix);
+        setTimeout(fix, 0);
+        setTimeout(function() {
+            v.removeEventListener('pause', fix);
+            v.removeEventListener('play', fix);
+        }, 800);
+    }
+
     function doSeek(side) {
         var v = getVideo();
         if (!v) return;
@@ -138,65 +164,96 @@
         showIndicator(side, seekAccum);
     }
 
-    function startSeek(side) {
-        var v = getVideo();
-        // если плеер всё же успел среагировать на первый тап (пауза/плей) — откатываем
-        if (v && pausedBefore !== null && v.paused !== pausedBefore) {
-            if (pausedBefore) v.pause(); else { var p = v.play(); if (p && p.catch) p.catch(function(){}); }
+    // Решаем в начале касания: обычный тап или перемотка
+    function beginGesture(target, x, y) {
+        var now = Date.now();
+        var side = zoneAt(target, x, y);
+        var blocked = false;
+        if (side === -1 || side === 1) {
+            if (now < seekUntil && side === seekSide) blocked = true;                 // уже мотаем
+            else if (now - lastTapEnd < TAP_DELAY && side === lastTapSide) blocked = true; // второй тап
         }
-        seekSide = side;
-        seekAccum = 0;
-        doSeek(side);
+        if (!blocked) {
+            var v = getVideo();
+            pausedBefore = v ? v.paused : null;
+        }
+        gesture = { blocked: blocked, side: side, x: x, y: y, t: now };
+        if (blocked) blockUntil = now + 700;
     }
 
-    window.addEventListener('click', function(e) {
-        if (pass || !fromTouch()) return;
-        var side = zoneOf(e);
-        if (side === null || side === 0) return; // центр — как обычно
-
-        // уже мотаем — каждый следующий тап сразу добавляет ещё 5 сек
-        if (Date.now() < seekUntil && side === seekSide) {
-            block(e);
-            doSeek(side);
-            return;
+    function endGesture(x, y) {
+        var g = gesture;
+        gesture = null;
+        if (!g) return;
+        var now = Date.now();
+        var moved = Math.abs(x - g.x) > 25 || Math.abs(y - g.y) > 25;
+        if (g.blocked) {
+            blockUntil = now + 700;
+            if (moved) return;
+            if (now < seekUntil && g.side === seekSide) {
+                doSeek(g.side);
+            } else {
+                seekSide = g.side;
+                seekAccum = 0;
+                restorePauseState();
+                doSeek(g.side);
+            }
+            lastTapEnd = 0;
+        } else {
+            if (!moved && now - g.t < 400 && (g.side === -1 || g.side === 1)) {
+                lastTapEnd = now;
+                lastTapSide = g.side;
+            } else {
+                lastTapEnd = 0;
+            }
         }
+    }
 
-        // второй тап в ту же сторону — начинаем перемотку
-        if (tapTimer && firstTapSide === side) {
-            clearTimeout(tapTimer);
-            tapTimer = null;
-            block(e);
-            startSeek(side);
-            return;
-        }
+    var opt = { capture: true, passive: false };
 
-        // первый тап — придерживаем; если второго не будет, отдаём клик плееру
-        block(e);
-        if (tapTimer) clearTimeout(tapTimer);
-        var v = getVideo();
-        pausedBefore = v ? v.paused : null;
-        firstTapSide = side;
-        var target = e.target;
-        var init = {
-            bubbles: true, cancelable: true, view: window,
-            clientX: e.clientX, clientY: e.clientY,
-            screenX: e.screenX, screenY: e.screenY
-        };
-        tapTimer = setTimeout(function() {
-            tapTimer = null;
-            firstTapSide = 0;
-            pass = true;
-            try { target.dispatchEvent(new MouseEvent('click', init)); }
-            finally { pass = false; }
-        }, TAP_DELAY);
-    }, true);
+    // pointer-события приходят раньше touch — решение принимаем на первом из них
+    window.addEventListener('pointerdown', function(e) {
+        if (e.pointerType !== 'touch' || !e.isPrimary) return;
+        beginGesture(e.target, e.clientX, e.clientY);
+        if (gesture.blocked) block(e);
+    }, opt);
 
-    // плеер на двойной клик уходит в полноэкранный режим — по бокам это отключаем
-    window.addEventListener('dblclick', function(e) {
-        if (!fromTouch()) return;
-        var side = zoneOf(e);
-        if (side === -1 || side === 1) block(e);
-    }, true);
+    window.addEventListener('touchstart', function(e) {
+        if (e.touches.length > 1) { gesture = null; return; }
+        var tc = e.changedTouches[0];
+        if (!gesture || Date.now() - gesture.t > 300) beginGesture(e.target, tc.clientX, tc.clientY);
+        if (gesture && gesture.blocked) block(e);
+    }, opt);
+
+    ['pointermove', 'touchmove'].forEach(function(type) {
+        window.addEventListener(type, function(e) {
+            if (type === 'pointermove' && e.pointerType !== 'touch') return;
+            if (gesture && gesture.blocked) block(e);
+        }, opt);
+    });
+
+    window.addEventListener('pointerup', function(e) {
+        if (e.pointerType !== 'touch' || !e.isPrimary) return;
+        if (gesture && gesture.blocked) block(e);
+    }, opt);
+
+    window.addEventListener('touchend', function(e) {
+        var tc = e.changedTouches[0];
+        var wasBlocked = gesture && gesture.blocked;
+        endGesture(tc.clientX, tc.clientY);
+        if (wasBlocked) block(e); // preventDefault здесь отменяет эмуляцию mouse/click
+    }, opt);
+
+    window.addEventListener('touchcancel', function() { gesture = null; }, opt);
+
+    // хвосты перехваченного тапа (на случай, если браузер всё равно их пришлёт)
+    ['pointercancel', 'mousedown', 'mouseup', 'click', 'dblclick'].forEach(function(type) {
+        window.addEventListener(type, function(e) {
+            if (type === 'pointercancel' && e.pointerType !== 'touch') return;
+            // мышь на ПК сюда не попадает: blockUntil ставится только после касания пальцем
+            if (Date.now() < blockUntil && zoneAt(e.target, e.clientX, e.clientY) !== null) block(e);
+        }, opt);
+    });
 
     // ================== ЗАЩИТА ОТ ЦИКЛА ПАУЗА/ПЛЕЙ ==================
     // Если в первую минуту видео само дёргается пауза/плей без участия пользователя —
