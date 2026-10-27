@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Seasonvar enchancer
 // @namespace    *://seasonvar.ru/*
-// @version      1.1.3
+// @version      1.2.1
 // @description  Enchancer for seasonvar.ru
 // @author       VOLK_RuS
 // @match        *://seasonvar.ru/*
@@ -19,28 +19,57 @@
     var TAP_DELAY        = 300;   // мс — окно для второго тапа
     var SEEK_MODE_MS     = 800;   // мс — после перемотки каждый следующий тап сразу мотает
     var DEFAULT_SPEED    = 5;     // 0=0.25, 1=0.5, 2=0.75, 3=1, 4=1.25, 5=1.5, 6=2
-    var SAVE_TIME_IN_URL = true;  // писать #rewind=... в адрес при "Отметке на моменте"
+    var BLOCK_AUTOPLAY   = true;  // не запускать видео само при загрузке страницы
+    var NO_AUTOMUTE      = true;  // не давать плееру выключать звук при загрузке
+    var MOBILE_CONTROLS_SCALE = 1.5; // увеличение панели управления на телефоне (1 — как есть)
     // ================================================
 
-    // --- Фикс бесконечной паузы/плея ---
-    // При открытии вкладки с #rewind=... плеер сам перематывает на тайминг,
-    // а сайт одновременно предлагает свою автоотметку ("5 серия 05:12").
-    // Они дерутся за видео → цикл пауза/плей. Раз позицию уже задаёт #rewind,
-    // убираем сайтовую автоотметку (то же, что клик по ней).
-    var hasRewind = /^#rewind=/.test(location.hash);
-    if (hasRewind) {
-        var rewindStart = Date.now();
-        var rewindIv = setInterval(function() {
-            if (Date.now() - rewindStart > 20000) { clearInterval(rewindIv); return; }
-            try {
-                if (window.markAuto && typeof window.markAuto.remove === 'function') {
-                    window.markAuto.remove();
-                    clearInterval(rewindIv);
-                    console.log('[Seasonvar enchancer] Есть #rewind — сайтовая автоотметка убрана');
-                }
-            } catch (e) {}
-        }, 300);
+    // ================== БЕЗ АВТОПЛЕЯ И АВТОМУТА ==================
+    // До первого касания/клика по плееру (или нажатия клавиши) видео не запускается само,
+    // а звук не выключается. После первого действия пользователя всё работает как обычно,
+    // в том числе автопереход на следующую серию.
+    var pageStart = Date.now();
+    var playerTouched = false;
+
+    function inPlayer(t) {
+        return !!(t && (t.tagName === 'VIDEO' || (t.closest && t.closest('pjsdiv'))));
     }
+
+    function guardActive() {
+        return !playerTouched && Date.now() - pageStart < 60000;
+    }
+
+    function unmute(v) {
+        if (!NO_AUTOMUTE) return;
+        try { if (v && v.muted) v.muted = false; } catch (e) {}
+        try { if (window.player && player.api) player.api('unmute'); } catch (e) {}
+    }
+
+    function onFirstPlayerInput(e) {
+        if (playerTouched) return;
+        if (e.type !== 'keydown' && !inPlayer(e.target)) return;
+        playerTouched = true;
+        // жест пользователя — браузер разрешит включить звук
+        var vids = document.getElementsByTagName('video');
+        for (var i = 0; i < vids.length; i++) unmute(vids[i]);
+    }
+    ['pointerdown', 'touchstart', 'mousedown', 'keydown'].forEach(function(t) {
+        window.addEventListener(t, onFirstPlayerInput, { capture: true, passive: true });
+    });
+
+    // media-события не всплывают, но ловятся на document в фазе захвата
+    document.addEventListener('play', function(e) {
+        if (!BLOCK_AUTOPLAY || !guardActive() || e.target.tagName !== 'VIDEO') return;
+        e.target.pause();
+        try { if (window.player && player.api) player.api('pause'); } catch (err) {}
+        unmute(e.target); // на паузе браузер позволяет включить звук
+        console.log('[Seasonvar enchancer] Автоплей остановлен');
+    }, true);
+
+    document.addEventListener('volumechange', function(e) {
+        if (!NO_AUTOMUTE || !guardActive() || e.target.tagName !== 'VIDEO') return;
+        if (e.target.muted) unmute(e.target);
+    }, true);
 
     var vid;
     var button;
@@ -89,7 +118,7 @@
         var r = v.getBoundingClientRect();
         if (!r.width || !r.height) return null;
         // не трогаем верхнюю полосу и панель управления снизу
-        if (x < r.left || x > r.right || y < r.top + 40 || y > r.bottom - 60) return null;
+        if (x < r.left || x > r.right || y < r.top + 40 || y > r.bottom - (IS_MOBILE ? 60 * MOBILE_CONTROLS_SCALE : 60)) return null;
         var rel = (x - r.left) / r.width;
         if (rel < 0.35) return -1;
         if (rel > 0.65) return 1;
@@ -289,6 +318,67 @@
         }, 300);
     })();
 
+    // ================== КРУПНЫЕ КНОПКИ НА ТЕЛЕФОНЕ ==================
+    // Кнопки плеера — блоки с точкой привязки (left/top) в центре иконки.
+    // Левую группу увеличиваем от левого нижнего угла, правую — от правого,
+    // поэтому кнопки растут, не наезжая друг на друга. Полоса перемотки
+    // становится толще и поднимается над кнопками, по ширине не меняется.
+    var IS_MOBILE = window.matchMedia && matchMedia('(hover: none) and (pointer: coarse)').matches;
+
+    function setTf(el, tf, origin) {
+        if (el.style.transform !== tf) el.style.transform = tf;
+        if (origin && el.style.transformOrigin !== origin) el.style.transformOrigin = origin;
+    }
+
+    function scaleControls() {
+        var S = MOBILE_CONTROLS_SCALE;
+        if (!IS_MOBILE || S === 1) return;
+        var v = getVideo();
+        if (!v) return;
+        var frame = v.parentElement && v.parentElement.parentElement; // #oframe...
+        if (!frame || frame.tagName !== 'PJSDIV') return;
+        var W = frame.offsetWidth, H = frame.offsetHeight;
+        if (!W || !H) return;
+        var zone = 70; // нижняя полоса, где живут кнопки и перемотка
+
+        for (var i = 0; i < frame.children.length; i++) {
+            var el = frame.children[i];
+            if (el.tagName !== 'PJSDIV' || el.contains(v)) continue;
+            var st = el.style;
+
+            // фон панели (на всю ширину, прижат к низу)
+            if (st.bottom === '0px' && st.width === '100%' && parseFloat(st.height) < 80) {
+                setTf(el, 'scaleY(' + S + ')', 'center bottom');
+                continue;
+            }
+
+            var ax = parseFloat(st.left), ay = parseFloat(st.top);
+            if (isNaN(ax) || isNaN(ay) || ay < H - zone || ay > H) continue;
+            var dy = (S - 1) * (ay - H);
+
+            var first = el.firstElementChild;
+            var isTimeline = first && parseFloat(first.style.width) > W * 0.5;
+
+            if (isTimeline) {
+                // поднимаем и утолщаем, ширину и положение по X не трогаем
+                setTf(el, 'translate(0px,' + dy + 'px)', '0px 0px');
+                for (var j = 0; j < el.children.length; j++) {
+                    var c = el.children[j];
+                    if (c.querySelector('svg')) setTf(c, 'scale(' + S + ')');          // бегунок
+                    else if (c.style.bottom) setTf(c, 'scaleY(' + S + ')', 'center bottom'); // полоса
+                    else if (c.style.opacity === '0' && c.style.pointerEvents === 'auto')
+                        setTf(c, 'scaleY(' + S + ')');                                 // зона касания
+                }
+                continue;
+            }
+
+            var ox = ax < W / 2 ? 0 : W;
+            var dx = (S - 1) * (ax - ox);
+            setTf(el, 'translate(' + dx + 'px,' + dy + 'px) scale(' + S + ')', '0px 0px'); // от точки привязки
+        }
+    }
+    setInterval(scaleControls, 300);
+
     // ================== ОСНОВНОЙ ЦИКЛ ==================
     var wasFullscreen = false;
 
@@ -399,10 +489,6 @@
                         var o = svfunc.player.getTime();
                         r.minute = Math.floor(o / 60);
                         r.second = Math.max(1, Math.floor(o - 60 * r.minute));
-                        if (SAVE_TIME_IN_URL) {
-                            // replaceState не вызывает hashchange, плеер не дёргается
-                            history.replaceState(null, '', '#rewind=' + r.seria + '_seriya_na_' + r.minute + '_minute_' + r.second + '_sekunde');
-                        }
                     }
                     t = 'pauseadd';
                     e = 'Отметка добавлена';
